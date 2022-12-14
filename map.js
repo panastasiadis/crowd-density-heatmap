@@ -1,108 +1,56 @@
-// alert('Here goes the heatmap');
+var baseLayer = L.tileLayer(
+  'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    attribution: '...',
+    maxZoom: 19,
+    minZoom: 18
 
-var map = L.map('map').setView([48.99862, 8.37519], 100);
+  }
+);
 
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution:
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-}).addTo(map);
+var cfg = {
+  // radius should be small ONLY if scaleRadius is true (or small radius is intended)
+  // if scaleRadius is false it will be the constant radius used in pixels
+  radius: 30,
+  // maxOpacity: 0.8,
+  // scales the radius based on map zoom
+  // scaleRadius: true,
+  // if set to false the heatmap uses the global maximum for colorization
+  // if activated: uses the data maximum within the current map boundaries
+  //   (there will always be a red spot with useLocalExtremas true)
+  "useLocalExtremas": true,
+  // which field name in your data represents the latitude - default "lat"
+  latField: 'lat',
+  // which field name in your data represents the longitude - default "lng"
+  lngField: 'lng',
+  // which field name in your data represents the data value - default "value"
+  valueField: 'count',
+};
 
-L.marker([48.99862, 8.37519])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #1')
+var heatmapLayer = new HeatmapOverlay(cfg);
 
-L.marker([48.99854, 8.37502])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #2')
+var map = new L.Map('map-canvas', {
+  center: new L.LatLng(48.99874, 8.3752),
+  zoom: 18,
+  layers: [baseLayer, heatmapLayer],
+});
 
-L.marker([48.99874, 8.3752])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #3')
+var goldIcon = new L.Icon({
+  iconUrl: 'img/wifi_icon.png',
+  shadowUrl: 'img/marker-shadow.png',
+  iconSize: [20, 15],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [40, 20],
+});
+const addPin = (lat, lon, name) => {
+  L.marker([lat, lon], { icon: goldIcon }).bindPopup(name).addTo(map);
+};
 
-L.marker([48.99852, 8.37606])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #4')
-
-L.marker([48.99874, 8.37592])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #5')
-
-L.marker([48.99884, 8.37593])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #6')
-
-L.marker([48.9989, 8.37524])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #8')
-
-L.marker([48.99898, 8.37521])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #9')
-
-L.marker([48.99906, 8.37511])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #10')
-
-L.marker([48.99893, 8.37417])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #11')
-
-  L.marker([48.99865, 8.37415])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #14')
-
-  L.marker([48.99912, 8.37405])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #15')
-
-  L.marker([48.9984, 8.37466])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #16')
+// L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+//   attribution:
+//     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+// }).addTo(map);
 
 
-  L.marker([48.99833, 8.3746])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #17')
-
-
-  L.marker([48.99846, 8.37449])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #18')
-
-
-  L.marker([48.99837, 8.37435])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #19')
-
-
-  L.marker([48.99903, 8.37411])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #21')
-
-
-  L.marker([48.9982, 8.37567])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #22')
-
-
-  L.marker([48.99815,8.37563])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #23')
-
-
-  L.marker([48.99817, 8.37554])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #24')
-
-
-  L.marker([48.99917, 8.37446])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #25')
-
-  L.marker([48.99925, 8.37455])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #26')
-
-  L.marker([48.99929, 8.37449])
-  .addTo(map)
-  .bindPopup('Raspberry Pi #27')
+export default { heatmapLayer, addPin };
