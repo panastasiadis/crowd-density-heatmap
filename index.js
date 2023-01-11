@@ -53,39 +53,39 @@ getRPIdevices().then((rpiDevices) => {
     device.id = parseInt(device.Name.replace(/^\D+/g, ''));
     map.addPin(device.Latitude, device.Longitude, device.Name);
   }
-
-  // console.log(rpiDevices);
-
   const ws = new WebSocket('ws://62.217.127.19:8080/stream/');
   ws.addEventListener('open', (event) => {
     console.log('Connection opened');
   });
 
-  // let isFetchingInitData = true;
   let devices = [];
 
-  // setInterval(() => {
-  //   console.log('Updating people...');
-
-  //   const updatedDevices = devices.filter((device) => {
-  //     const currTime = new Date();
-  //     const deviceTime = new Date(device.timestamp);
-  //     const timeDiff = (currTime.getTime() - deviceTime.getTime()) / 60000;
-  //     console.log(
-  //       currTime.getTime(),
-  //       deviceTime.getTime(),
-  //       timeDiff.toFixed(2)
-  //     );
-  //     return timeDiff.toFixed(2) < 1;
-  //   });
-  //   const updatedData = {
-  //     max: 100,
-  //     min: 0,
-  //     data: updatedDevices,
-  //   };
-  //   map.heatmapLayer.setData(updatedData);
-  //   devices = [...updatedDevices];
-  // }, 120100);
+  setInterval(() => {
+    let oldLength = devices.length;
+    const updatedDevices = devices.filter((device) => {
+      const currTime = new Date();
+      const deviceTime = new Date(device.timestamp);
+      const timeDiff = (currTime.getTime() - deviceTime.getTime()) / 60000;
+      // console.log(
+      //   currTime.getTime(),
+      //   deviceTime.getTime(),
+      //   timeDiff.toFixed(2)
+      // );
+      return timeDiff.toFixed(2) < 2;
+    });
+    const updatedData = {
+      max: 100,
+      min: 0,
+      data: updatedDevices,
+    };
+    map.heatmapLayer.setData(updatedData);
+    devices = [...updatedDevices];
+    console.log(
+      `Routine check: ${oldLength - devices.length} devices were removed! New length: ${
+        devices.length
+      }, Old length: ${oldLength}`
+    );
+  }, 120100);
 
   ws.addEventListener('message', (event) => {
     let oldLength = devices.length;
