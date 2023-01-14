@@ -3,6 +3,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- import the leaflet-heatmap and the heatmap libraries -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
@@ -14,15 +15,17 @@
       integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
       crossorigin=""
     ></script>
-    <script src="./heatmap.js"></script>
-    <script src="./leaflet-heatmap.js"></script>
+    <script src="./libs/heatmap/heatmap.js"></script>
+    <script src="./libs/heatmap/leaflet-heatmap.js"></script>
     <title>DASFEST Heatmap</title>
   </head>
-  <header><h1>DAS FEST 2018</h1><h2>Crowd density in real time!</h2></header>
+  <header>
+    <h1>DAS FEST 2018</h1>
+    <h2>Crowd density in real time!</h2>
+  </header>
   <body>
-    <p>Heatmap</p>
+    <h3>Heatmap</h3>
     <div id="map-canvas" style="height: 100%"></div>
-    <!-- <script type="text/javascript" src="./map.js"></script> -->
     <script type="module" src="./index.js"></script>
   </body>
 </html>

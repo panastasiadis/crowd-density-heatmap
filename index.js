@@ -1,182 +1,176 @@
-import trilateration from './trilateration.js';
-import measurement from './measurement.js';
-import map from './map.js';
-import arrayUtils from './array_utils.js';
+import trilateration from './utils/trilateration.js';
+import map from './components/map.js';
+import arrayCombinations from './utils/array_combinations.js';
+import conversions from './utils/conversions.js';
+import url from './utils/url.js';
 
-// const p1 = measurement.convertGeodeticToEcef(37.418436, -121.963477);
-// p1.r = 265.710701754;
-
-// const p2 = measurement.convertGeodeticToEcef(37.417243, -121.961889);
-// p2.r = 234.592423446;
-
-// const p3 = measurement.convertGeodeticToEcef(37.418692, -121.960194);
-// p3.r = 548.954278262;
-
-// const trilPoint = trilateration.calculate(p1, p2, p3);
-
-// const trilPointinGeo = measurement.convertEcefToGeodetic(
-//   trilPoint.x,
-//   trilPoint.y,
-//   trilPoint.z
-// );
-
-// console.log(p1, p2, p3, trilPointinGeo);
-
-async function getRPIdevices() {
+/* Sends a GET request to fetch the location info 
+   of all the RPIs in DAS FEST */
+const getRPIdevices = async () => {
   try {
-    const response = await fetch('http://62.217.127.19:8080/rpi');
-    const data = await response.json();
-    return data;
+    const response = await fetch(url.rpis);
+    return await response.json();
   } catch (err) {
     console.error(err.message);
   }
-}
-
-// setInterval(() => {
-//   const initData = {
-//     max: 100,
-//     min: 0,
-//     data: [],
-//   };
-//   map.heatmapLayer.setData(initData);
-// }, 2000);
-
-const initData = {
-  max: 100,
-  min: 0,
-  data: [],
 };
-map.heatmapLayer.setData(initData);
+
+/* Removes devices older than 5 minutes from the map and
+   returns a filtered array of devices without the old data*/
+const removeAgedDevices = (devices) => {
+  /* only for logging */
+  let numOfDevicesBeforeRemoval = devices.length;
+
+  /* Filter devices older than two minutes */
+  const updatedDevices = devices.filter((device) => {
+    const currTime = new Date();
+    /* Get the timestamp of the located device  */
+    const deviceTime = new Date(device.timestamp);
+    /* calculate the located device's age in minutes */
+    const timeDiff = (currTime.getTime() - deviceTime.getTime()) / 60000;
+    /* Drop the ones older than the specified threshold */
+    return timeDiff.toFixed(2) < 5;
+  });
+
+  /* Add the updated data to the map */
+  map.addDevices(updatedDevices);
+
+  /* log the results */
+  console.log(
+    `${numOfDevicesBeforeRemoval - updatedDevices.length} devices were removed! New length: ${
+      updatedDevices.length
+    }, Old length: ${numOfDevicesBeforeRemoval}`
+  );
+
+  return updatedDevices;
+};
 
 getRPIdevices().then((rpiDevices) => {
+  /* Display the RPIs on map with RPI icons */
   for (const device of rpiDevices) {
+    /* extract device id from name to a new attribute "id" */
     device.id = parseInt(device.Name.replace(/^\D+/g, ''));
-    map.addPin(device.Latitude, device.Longitude, device.Name);
+    /* add RPI on the Map */
+    map.addRPI(device.Latitude, device.Longitude, device.Name);
   }
-  const ws = new WebSocket('ws://62.217.127.19:8080/stream/');
+
+
+  const ws = new WebSocket(url.stream);
+
+  /* Attempts a connection to the Web Socket
+      that streams the devices found by the RPIs */
   ws.addEventListener('open', (event) => {
     console.log('Connection opened');
   });
 
+  /* Array holding the displayed devices. Empty at first.*/
   let devices = [];
 
+  /* Set an interval to check every 5+ minutes for aged data on map */
   setInterval(() => {
-    let oldLength = devices.length;
-    const updatedDevices = devices.filter((device) => {
-      const currTime = new Date();
-      const deviceTime = new Date(device.timestamp);
-      const timeDiff = (currTime.getTime() - deviceTime.getTime()) / 60000;
-      // console.log(
-      //   currTime.getTime(),
-      //   deviceTime.getTime(),
-      //   timeDiff.toFixed(2)
-      // );
-      return timeDiff.toFixed(2) < 2;
-    });
-    const updatedData = {
-      max: 100,
-      min: 0,
-      data: updatedDevices,
-    };
-    map.heatmapLayer.setData(updatedData);
-    devices = [...updatedDevices];
-    console.log(
-      `Routine check: ${oldLength - devices.length} devices were removed! New length: ${
-        devices.length
-      }, Old length: ${oldLength}`
-    );
-  }, 120100);
+    devices = removeAgedDevices(devices);
+  }, 300100);
 
+  /* listens for fetched devices from the RPIs */
   ws.addEventListener('message', (event) => {
-    let oldLength = devices.length;
     const foundDevices = JSON.parse(event.data);
-    const updatedDevices = devices.filter((device) => {
-      const currTime = new Date();
-      const deviceTime = new Date(device.timestamp);
-      const timeDiff = (currTime.getTime() - deviceTime.getTime()) / 60000;
-      // console.log(
-      //   currTime.getTime(),
-      //   deviceTime.getTime(),
-      //   timeDiff.toFixed(2)
-      // );
-      return timeDiff.toFixed(2) < 2;
-    });
-    const updatedData = {
-      max: 100,
-      min: 0,
-      data: updatedDevices,
-    };
-    map.heatmapLayer.setData(updatedData);
-    devices = [...updatedDevices];
-    console.log(
-      `${oldLength - devices.length} devices were removed! New length: ${
-        devices.length
-      }, Old length: ${oldLength}`
-    );
+
+    console.log('<///------------------------');
+
+    /* search for possible aged data on the array */
+    devices = removeAgedDevices(devices);
+
+    /* counter for the total trilateration points. Only for logging. */
     let i = 0;
-    oldLength = devices.length;
+
+    /* iterate through every fetched device */
     for (const foundDevice of foundDevices) {
-      const rpiCombinations = arrayUtils.getArrayElementsCombs(
+      /* every incoming device was measured by some RPIs.
+        get every possible combination of three RPIs to
+        increase the chances of finding trilateration points below */
+      const rpiCombinations = arrayCombinations.getCombinations(
         foundDevice.measurements,
         3
       );
-      for (const combination of rpiCombinations) {
-        const rpi1 = rpiDevices.find((rpi) => rpi.id === combination[0].rpi);
-        const rpi2 = rpiDevices.find((rpi) => rpi.id === combination[1].rpi);
-        const rpi3 = rpiDevices.find((rpi) => rpi.id === combination[2].rpi);
 
-        const sphere1 = measurement.getCartesianSphere(
-          rpi1.Latitude,
-          rpi1.Longitude,
-          foundDevice.measurements[0].signal_strength
-        );
-        const sphere2 = measurement.getCartesianSphere(
-          rpi2.Latitude,
-          rpi2.Longitude,
-          foundDevice.measurements[1].signal_strength
-        );
-        const sphere3 = measurement.getCartesianSphere(
-          rpi3.Latitude,
-          rpi3.Longitude,
-          foundDevice.measurements[2].signal_strength
-        );
+      if (rpiCombinations.length >= 1) {
+        /* iterate through every combination of RPIs
+                until you find a trilateration point or reach the end */
+        for (const combination of rpiCombinations) {
+          /* Get the RPIs' coordinates (Lat, Lon) from the RPIs' array */
+          const rpi1 = rpiDevices.find((rpi) => rpi.id === combination[0].rpi);
+          const rpi2 = rpiDevices.find((rpi) => rpi.id === combination[1].rpi);
+          const rpi3 = rpiDevices.find((rpi) => rpi.id === combination[2].rpi);
 
-        const trilPoint = trilateration.calculate(sphere1, sphere2, sphere3);
-        // console.log(trilPoint);
-        if (trilPoint) {
-          const trilCoords = measurement.convertEcefToGeodetic(
-            trilPoint.x,
-            trilPoint.y,
-            trilPoint.z
+          /* create the cartesian spheres
+                      from the 3 RPIs coordinates and their measured signals */
+          const sphere1 = conversions.getCartesianSphere(
+            rpi1.Latitude,
+            rpi1.Longitude,
+            combination[0].signal_strength
+          );
+          const sphere2 = conversions.getCartesianSphere(
+            rpi2.Latitude,
+            rpi2.Longitude,
+            combination[1].signal_strength
+          );
+          const sphere3 = conversions.getCartesianSphere(
+            rpi3.Latitude,
+            rpi3.Longitude,
+            combination[2].signal_strength
           );
 
-          map.heatmapLayer.addData({
-            lat: trilCoords.latitude,
-            lng: trilCoords.longitude,
-            count: 30,
-          });
+          /* Calculate trilateration */
+          const trilPoint = trilateration.calculate(sphere1, sphere2, sphere3);
 
-          //adding all devices
-          devices.push({
-            lat: trilCoords.latitude,
-            lng: trilCoords.longitude,
-            count: 30,
-            timestamp: Date.now(),
-          });
-          i++;
-          break;
+          /* check if trilateration produced a result */
+          if (trilPoint) {
+            /* Convert the trilateration point from cartesian to (Lat, Lon) */
+            const trilCoords = conversions.ecefToGeodetic(
+              trilPoint.x,
+              trilPoint.y,
+              trilPoint.z
+            );
+
+            /* Add the located device on map with count of 1 */
+            map.addSingleDevice({
+              lat: trilCoords.latitude,
+              lng: trilCoords.longitude,
+              count: 1,
+            });
+
+            /* Push the located device into the devices array along with a timestamp */
+            devices.push({
+              lat: trilCoords.latitude,
+              lng: trilCoords.longitude,
+              count: 1,
+              timestamp: Date.now(),
+            });
+
+            i++;
+            /* at least one combination of RPIs produced a trilateration point.
+            We can skip the rest of the combinations */
+            break;
+          }
         }
       }
     }
-    console.log('New Devices: ' + foundDevices.length);
-    console.log('Located Devices: ' + i);
-    console.log(`Buffer Length: ${devices.length}, old length: ${oldLength}`);
 
-    // console.log(`Server sent the following message: ${event.data}`);
+    /* Log the results */
+    console.log('New Fetched Devices: ' + foundDevices.length);
+    console.log('Located Devices (Successful Trilateration): ' + i);
+    console.log(
+      `Number of devices displayed on map: (now) => ${devices.length}`
+    );
+    console.log('------------------------///>');
   });
+
+  /* Print a closing message on closing of the Web Socket */
   ws.addEventListener('close', (event) => {
     console.log('Connection closed.');
   });
+
+  /* Print an error message if something goes wrong with the Web Socket */
   ws.addEventListener('error', (event) => {
     console.log(`WebSocket error: ${event}.`);
   });

@@ -1,5 +1,9 @@
 import vectors from './vectors.js';
 
+/* Trilateration. Based on the Math from https://handwiki.org/wiki/Trilateration */
+
+/* Calculates trilateraion for 3 spheres p1, p2, p3 of type 
+     (x (x-axis), y (y-axis), z (z-axis), r (radius))*/
 const calculate = (p1, p2, p3) => {
   const ex = vectors.divide(
     vectors.subtract(p2, p1),
@@ -30,13 +34,9 @@ const calculate = (p1, p2, p3) => {
 
   let z = Math.pow(p1.r, 2) - Math.pow(x, 2) - Math.pow(y, 2);
 
-  if (Math.abs(z) < 0.0000000001) {
-    z = 0;
-  }
-
   z = Math.sqrt(z);
 
-  // no solution found
+  /* No solution found */
   if (isNaN(z)) {
     return null;
   }

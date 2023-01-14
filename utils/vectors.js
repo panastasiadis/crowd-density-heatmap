@@ -1,3 +1,16 @@
+/* Vector Operations
+        ----
+   Included: 
+      Normalization, 
+      Dot Product,
+      Cross Product,
+      Addition, 
+      Subtraction,
+      Division with Number,
+      Multiplication with Number
+        ----
+*/
+
 const normalize = (a) => {
   return Math.sqrt(Math.pow(a.x, 2) + Math.pow(a.y, 2) + Math.pow(a.z, 2));
 };
@@ -22,7 +35,7 @@ const add = (a, b) => {
   };
 };
 
-const divide = (a, b) => {
+const divide = (a, b) => {  
   return {
     x: a.x / b,
     y: a.y / b,
