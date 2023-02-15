@@ -46,6 +46,12 @@ const removeAgedDevices = (devices) => {
 };
 
 getRPIdevices().then((rpiDevices) => {
+
+  if (!rpiDevices) {
+    console.error("No RPIs were fetched!");
+    return;
+  }
+
   /* Display the RPIs on map with RPI icons */
   for (const device of rpiDevices) {
     /* extract device id from name to a new attribute "id" */
